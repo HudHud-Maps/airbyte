@@ -1,11 +1,9 @@
 name: Build and Push destination-s3
 
-# Builds the destination-s3 connector image and pushes it to the HudHud Aliyun
-# ACR through the shared cicd-reusable-workflows Kaniko template.
-#
-# This workflow is intentionally scoped to the feature branch used for the OSS
-# destination-s3 work. A push to any other branch will not trigger this image
-# build.
+# Builds the destination-s3 connector image and pushes it to HudHud Aliyun ACR.
+# This is intentionally self-contained instead of calling the shared reusable
+# workflow, because GitHub Actions may reject private cross-repo reusable
+# workflows when repository access is not explicitly enabled.
 #
 # Final image:
 #   hudhud-registry-vpc.me-central-1.cr.aliyuncs.com/private/data/airbyte-destination-s3:<sha8>
@@ -24,12 +22,51 @@ on:
       - "gradle.properties"
       - ".github/workflows/build-push-destination-s3.yml"
 
+env:
+  REGISTRY: hudhud-registry-vpc.me-central-1.cr.aliyuncs.com
+  NAMESPACE: private
+  DEPLOYMENT_NAME: data/airbyte-destination-s3
+  DOCKER_FILE_PATH: airbyte-integrations/connectors/destination-s3/Dockerfile
+
+permissions:
+  contents: read
+
 jobs:
   build-push:
-    if: github.event_name != 'workflow_dispatch' || inputs.job == 'all' ||
-      inputs.job == 'pois-deduplication'
-    uses: HudHud-Maps/cicd-reusable-workflows/.github/workflows/build-push-template.yaml@v1.5.1
-    secrets: inherit
-    with:
-      DEPLOYMENT_NAME: data/airbyte-destination-s3
-      DOCKER_FILE_PATH: airbyte-integrations/connectors/destination-s3/Dockerfile
+    runs-on: gha-runner-scale-set
+    container:
+      image: gcr.io/kaniko-project/executor:v1.23.2-debug
+    outputs:
+      sha8: ${{ steps.prepare-vars.outputs.sha8 }}
+
+    steps:
+      - name: Prepare variables
+        id: prepare-vars
+        run: |
+          short_sha="$(echo "${GITHUB_SHA}" | cut -c1-8)"
+          echo "sha8=${short_sha}" >> "${GITHUB_OUTPUT}"
+
+      - name: Build and push image to Aliyun ACR
+        run: |
+          cat <<EOF > /kaniko/.docker/config.json
+          {
+            "auths": {
+              "https://${REGISTRY}/v1/": {
+                "auth": "${{ secrets.REGISTRY_AUTH_ENCODED }}"
+              }
+            }
+          }
+          EOF
+
+          /kaniko/executor \
+            --dockerfile="${DOCKER_FILE_PATH}" \
+            --context="${{ github.repositoryUrl }}#${{ github.ref }}#${{ github.sha }}" \
+            --destination="${REGISTRY}/${NAMESPACE}/${DEPLOYMENT_NAME}:${{ steps.prepare-vars.outputs.sha8 }}" \
+            --cache-repo="${REGISTRY}/${NAMESPACE}/${DEPLOYMENT_NAME}/cache" \
+            --cache=true \
+            --cache-copy-layers=true \
+            --cache-ttl=24h \
+            --push-retry 5
+        env:
+          GIT_USERNAME: ${{ github.actor }}
+          GIT_PASSWORD: ${{ secrets.GITHUB_TOKEN }}

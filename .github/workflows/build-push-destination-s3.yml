@@ -26,15 +26,10 @@ on:
 
 jobs:
   build-push:
+    if: github.event_name != 'workflow_dispatch' || inputs.job == 'all' ||
+      inputs.job == 'pois-deduplication'
     uses: HudHud-Maps/cicd-reusable-workflows/.github/workflows/build-push-template.yaml@v1.5.1
     secrets: inherit
     with:
       DEPLOYMENT_NAME: data/airbyte-destination-s3
       DOCKER_FILE_PATH: airbyte-integrations/connectors/destination-s3/Dockerfile
-      # DOCKER_CONTEXT intentionally unset. Kaniko context remains the repo root
-      # so the Dockerfile can copy settings.gradle, buildSrc, airbyte-cdk, and the
-      # destination-s3 connector before running Gradle.
-      PRODUCTION_BRANCH: master
-      STAGING_BRANCH: feature/destination-s3-oss-support
-      # The push trigger is already scoped by branch and paths above.
-      CHECK_CHANGED_PATH: false

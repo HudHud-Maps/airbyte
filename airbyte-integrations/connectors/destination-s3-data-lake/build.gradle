@@ -42,6 +42,20 @@ dependencies {
     implementation("org.apache.iceberg:iceberg-aws:${project.ext.apacheIcebergVersion}")
     implementation("org.apache.iceberg:iceberg-nessie:${project.ext.apacheIcebergVersion}")
     implementation("org.apache.iceberg:iceberg-orc:${project.ext.apacheIcebergVersion}")
+    implementation("org.apache.iceberg:iceberg-hive-metastore:${project.ext.apacheIcebergVersion}")
+    implementation("org.apache.hive:hive-metastore:2.3.9") {
+        exclude group: "org.apache.hadoop"
+        exclude group: "org.slf4j", module: "slf4j-log4j12"
+        exclude group: "log4j"
+        exclude group: "org.apache.logging.log4j"
+        exclude group: "org.apache.orc"
+        exclude group: "org.pentaho"
+    }
+    // HudHud: lightweight URL-connection HTTP client for Iceberg's S3FileIO. The default AWS SDK
+    // Apache client uses a pooled connection manager that gets shut down between catalog operations
+    // (create -> drop refresh), causing "Connection pool shut down". The Hive path forces
+    // http-client.type=urlconnection (mirroring destination-iceberg), so this client must be present.
+    implementation("software.amazon.awssdk:url-connection-client:${project.ext.awsSdkVersion}")
     implementation("software.amazon.awssdk:s3:${project.ext.awsSdkVersion}")
     implementation("software.amazon.awssdk:sts:${project.ext.awsSdkVersion}")
     implementation("software.amazon.awssdk:glue:${project.ext.awsSdkVersion}")

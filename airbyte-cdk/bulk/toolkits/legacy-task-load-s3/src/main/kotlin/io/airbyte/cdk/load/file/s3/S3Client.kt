@@ -28,6 +28,7 @@ import io.airbyte.cdk.load.command.aws.AWSAccessKeyConfigurationProvider
 import io.airbyte.cdk.load.command.aws.AWSArnRoleConfigurationProvider
 import io.airbyte.cdk.load.command.aws.AwsAssumeRoleCredentials
 import io.airbyte.cdk.load.command.object_storage.ObjectStorageUploadConfigurationProvider
+import io.airbyte.cdk.load.command.s3.S3AddressingStyle
 import io.airbyte.cdk.load.command.s3.S3BucketConfiguration
 import io.airbyte.cdk.load.command.s3.S3BucketConfigurationProvider
 import io.airbyte.cdk.load.file.object_storage.ObjectStorageClient
@@ -236,19 +237,9 @@ class S3ClientFactory(
                 // https://github.com/awslabs/aws-sdk-kotlin/issues/1214#issuecomment-2464831817
                 httpClient(CrtHttpEngine)
 
-                // This is needed for minio compatibility. Without this option, the client uses
-                // "virtual-hosted-style" requests
-                // (https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html#virtual-hosted-style-access).
-                // Virtual-hosted-style requests prefix the bucket name on the hostname (e.g.
-                // your-bucket.host.docker.internal),
-                // which fails in many cases.
-                // Path-style access puts the bucket into the URL path
-                // (host.docker.internal/your-bucket),
-                // which works better for self-hosted things.
-                // Path-style access is supposedly deprecated as of 2020, but de facto AWS hasn't
-                // really taken any action on that as of 2025.
-                // Regardless, we may eventually want to put this behind a config option.
-                forcePathStyle = true
+                forcePathStyle =
+                    bucketConfig.s3BucketConfiguration.s3AddressingStyle ==
+                        S3AddressingStyle.PATH_STYLE
             }
 
         return S3KotlinClient(

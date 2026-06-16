@@ -48,6 +48,11 @@ enum class S3BucketRegion(@get:JsonValue val region: String) {
     `us-west-2`("us-west-2")
 }
 
+enum class S3AddressingStyle(@get:JsonValue val value: String) {
+    PATH_STYLE("path_style"),
+    VIRTUAL_HOSTED_STYLE("virtual_hosted_style"),
+}
+
 /**
  * Mix-in to provide S3 bucket configuration fields as properties.
  *
@@ -79,15 +84,24 @@ interface S3BucketSpecification {
     @get:JsonSchemaInject(json = """{"examples":["http://localhost:9000"]}""")
     val s3Endpoint: String?
 
+    val s3AddressingStyle: S3AddressingStyle?
+        get() = S3AddressingStyle.PATH_STYLE
+
     fun toS3BucketConfiguration(): S3BucketConfiguration {
-        return S3BucketConfiguration(s3BucketName, s3BucketRegion?.region, s3Endpoint)
+        return S3BucketConfiguration(
+            s3BucketName,
+            s3BucketRegion?.region,
+            s3Endpoint,
+            s3AddressingStyle ?: S3AddressingStyle.PATH_STYLE
+        )
     }
 }
 
 data class S3BucketConfiguration(
     val s3BucketName: String,
     val s3BucketRegion: String?,
-    val s3Endpoint: String?
+    val s3Endpoint: String?,
+    val s3AddressingStyle: S3AddressingStyle = S3AddressingStyle.PATH_STYLE,
 )
 
 interface S3BucketConfigurationProvider {

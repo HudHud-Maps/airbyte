@@ -319,19 +319,27 @@
         "examples" : [ "http://localhost:9000" ],
         "order" : 7
       },
+      "s3_addressing_style" : {
+        "type" : "string",
+        "enum" : [ "path_style", "virtual_hosted_style" ],
+        "description" : "Controls how the bucket name is sent to S3-compatible storage. Path style puts the bucket in the URL path. Virtual hosted style prefixes the bucket on the hostname and is required by some providers such as Alibaba OSS.",
+        "title" : "S3 Addressing Style",
+        "order" : 8,
+        "default" : "path_style"
+      },
       "s3_path_format" : {
         "type" : "string",
         "description" : "Format string on how data will be organized inside the bucket directory. Read more <a href=\"https://docs.airbyte.com/integrations/destinations/s3#:~:text=The%20full%20path%20of%20the%20output%20data%20with%20the%20default%20S3%20path%20format\">here</a>",
         "title" : "S3 Path Format",
         "examples" : [ "${NAMESPACE}/${STREAM_NAME}/${YEAR}_${MONTH}_${DAY}_${EPOCH}_" ],
-        "order" : 8
+        "order" : 9
       },
       "file_name_pattern" : {
         "type" : "string",
         "description" : "Pattern to match file names in the bucket directory. Read more <a href=\"https://docs.aws.amazon.com/AmazonS3/latest/userguide/ListingKeysUsingAPIs.html\">here</a>",
         "title" : "File Name Pattern",
         "examples" : [ "{date}", "{date:yyyy_MM}", "{timestamp}", "{part_number}", "{sync_id}" ],
-        "order" : 9
+        "order" : 10
       }
     },
     "required" : [ "s3_bucket_name", "s3_bucket_path", "s3_bucket_region", "format" ]

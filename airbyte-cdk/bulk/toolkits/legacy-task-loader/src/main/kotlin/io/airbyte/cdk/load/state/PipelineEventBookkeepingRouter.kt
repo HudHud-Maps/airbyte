@@ -305,6 +305,18 @@ class PipelineEventBookkeepingRouter(
                         )
                     )
                 }
+            } else {
+                catalog.streams.filter { it.includeFiles }.forEach {
+                    val manager = syncManager.getStreamManager(it.mappedDescriptor)
+                    if (!manager.endOfStreamRead()) {
+                        log.warn {
+                            "File stream ${it.mappedDescriptor} did not receive terminal stream " +
+                                "status before input closed; marking stream complete at EOF."
+                        }
+                        manager.markEndOfStream(true)
+                        fileTransferQueue.publish(FileTransferQueueEndOfStream(it))
+                    }
+                }
             }
             log.info { "Closing internal control channels" }
             fileTransferQueue.close()

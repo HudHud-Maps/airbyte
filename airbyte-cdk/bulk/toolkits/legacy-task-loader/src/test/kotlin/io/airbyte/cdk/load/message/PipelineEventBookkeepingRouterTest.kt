@@ -65,6 +65,19 @@ class PipelineEventBookkeepingRouterTest {
             1,
             namespaceMapper = NamespaceMapper()
         )
+    private val fileStream =
+        DestinationStream(
+            unmappedNamespace = "ns",
+            unmappedName = "files",
+            mockk(),
+            mockk(),
+            1,
+            1,
+            1,
+            isFileBased = true,
+            includeFiles = true,
+            namespaceMapper = NamespaceMapper()
+        )
 
     private fun router(numDataChannels: Int, markEndOfStreamAtEnd: Boolean = false) =
         PipelineEventBookkeepingRouter(
@@ -468,4 +481,26 @@ class PipelineEventBookkeepingRouterTest {
             )
         }
     }
+
+    @Test
+    fun `close marks incomplete file streams complete when terminal status is not forwarded`() =
+        runTest {
+            every { catalog.streams } returns listOf(fileStream)
+            every { syncManager.getStreamManager(fileStream.mappedDescriptor) } returns streamManager1
+            every { streamManager1.endOfStreamRead() } returns false
+
+            val r = router(numDataChannels = 1, markEndOfStreamAtEnd = false)
+
+            r.close()
+
+            coVerify { streamManager1.markEndOfStream(true) }
+            coVerify {
+                fileTransferQueue.publish(
+                    match {
+                        it is FileTransferQueueEndOfStream && it.stream == fileStream
+                    }
+                )
+            }
+            coVerify { syncManager.markInputConsumed() }
+        }
 }

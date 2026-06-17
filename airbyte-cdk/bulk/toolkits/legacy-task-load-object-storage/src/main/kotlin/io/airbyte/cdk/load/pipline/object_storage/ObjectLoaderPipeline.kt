@@ -104,6 +104,12 @@ class ObjectLoaderPipeline<K : WithStream, T : RemoteObject<*>>(
         ): List<LoadPipelineStep> {
             return if (dataChannelMedium == DataChannelMedium.SOCKET) {
                 listOf(oneShotObjectLoaderStep)
+            } else if (isLegacyFileTransfer) {
+                listOf(
+                    legacyProcessFileStep,
+                    recordUploadStep,
+                    recordCompleterStep,
+                )
             } else if (isFileTransfer) {
                 listOf(
                     routeEventStep!!,
@@ -117,11 +123,7 @@ class ObjectLoaderPipeline<K : WithStream, T : RemoteObject<*>>(
                 )
             } else {
                 listOf(
-                    if (isLegacyFileTransfer) {
-                        legacyProcessFileStep
-                    } else {
-                        recordPartStep
-                    },
+                    recordPartStep,
                     recordUploadStep,
                     recordCompleterStep,
                 )

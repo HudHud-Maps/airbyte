@@ -208,10 +208,10 @@ class DestinationStreamFactory(
                         Dedupe(primaryKey = stream.primaryKey, cursor = stream.cursorField)
                     DestinationSyncMode.UPDATE -> Update
                     DestinationSyncMode.SOFT_DELETE -> SoftDelete
-                },
-            generationId = stream.generationId,
-            minimumGenerationId = stream.minimumGenerationId,
-            syncId = stream.syncId,
+            },
+            generationId = stream.generationId ?: 0,
+            minimumGenerationId = stream.minimumGenerationId ?: 0,
+            syncId = stream.syncId ?: 0,
             schema = schema,
             isFileBased = (stream.stream.isFileBased ?: false) || forceFileTransfer,
             includeFiles = (stream.includeFiles ?: false) || forceFileTransfer,

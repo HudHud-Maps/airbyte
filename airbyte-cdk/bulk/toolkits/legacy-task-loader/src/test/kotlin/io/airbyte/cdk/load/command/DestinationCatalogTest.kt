@@ -207,6 +207,62 @@ class DestinationCatalogTest {
     }
 
     @Test
+    fun fileMetadataStreamsCanOmitGenerationFields() {
+        val streamFactory =
+            DestinationStreamFactory(
+                JsonSchemaToAirbyteType(JsonSchemaToAirbyteType.UnionBehavior.DEFAULT),
+                namespaceMapper = NamespaceMapper(),
+                fileTransferEnabled = true,
+            )
+        val catalogFactory = DefaultDestinationCatalogFactory()
+        val configuredCatalog =
+            ConfiguredAirbyteCatalog()
+                .withStreams(
+                    listOf(
+                        ConfiguredAirbyteStream()
+                            .withDestinationSyncMode(DestinationSyncMode.OVERWRITE)
+                            .withStream(
+                                AirbyteStream()
+                                    .withJsonSchema(
+                                        """
+                                        {
+                                          "type": "object",
+                                          "properties": {
+                                            "bytes": {"type": "integer"},
+                                            "file_name": {"type": "string"},
+                                            "folder": {"type": "string"},
+                                            "id": {"type": "string"},
+                                            "mime_type": {"type": "string"},
+                                            "source_uri": {"type": "string"}
+                                          }
+                                        }
+                                        """
+                                            .trimIndent()
+                                            .deserializeToNode()
+                                    )
+                                    .withName("geotag_raw_files")
+                            )
+                    )
+                )
+
+        val destinationCatalog =
+            catalogFactory.getDestinationCatalog(
+                configuredCatalog,
+                streamFactory,
+                operation = "write",
+                checkNamespace = null,
+                namespaceMapper = NamespaceMapper()
+            )
+
+        val destinationStream = destinationCatalog.streams.single()
+        assertEquals(0, destinationStream.generationId)
+        assertEquals(0, destinationStream.minimumGenerationId)
+        assertEquals(0, destinationStream.syncId)
+        assertTrue(destinationStream.isFileBased)
+        assertTrue(destinationStream.includeFiles)
+    }
+
+    @Test
     fun fileTransferEnabledDoesNotForceNormalRecordStreamsToIncludeFiles() {
         val streamFactory =
             DestinationStreamFactory(

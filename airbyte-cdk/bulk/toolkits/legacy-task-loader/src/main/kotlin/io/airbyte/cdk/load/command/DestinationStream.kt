@@ -17,6 +17,7 @@ import io.airbyte.protocol.models.v0.AirbyteStream
 import io.airbyte.protocol.models.v0.ConfiguredAirbyteStream
 import io.airbyte.protocol.models.v0.DestinationSyncMode
 import io.airbyte.protocol.models.v0.StreamDescriptor
+import io.micronaut.context.annotation.Value
 import jakarta.inject.Singleton
 
 /**
@@ -184,9 +185,16 @@ fun AirbyteType.computeUnknownColumnChanges() =
 @Singleton
 class DestinationStreamFactory(
     private val jsonSchemaToAirbyteType: JsonSchemaToAirbyteType,
-    private val namespaceMapper: NamespaceMapper
+    private val namespaceMapper: NamespaceMapper,
+    @Value("\${airbyte.destination.core.file-transfer.enabled:false}")
+    private val fileTransferEnabled: Boolean = false,
 ) {
     fun make(stream: ConfiguredAirbyteStream): DestinationStream {
+        val schema = jsonSchemaToAirbyteType.convert(stream.stream.jsonSchema)
+        val forceFileTransfer =
+            fileTransferEnabled &&
+                ((stream.stream.isFileBased ?: false) || schema.isFileTransferMetadataSchema())
+
         return DestinationStream(
             unmappedNamespace = stream.stream.namespace,
             unmappedName = stream.stream.name,
@@ -204,9 +212,9 @@ class DestinationStreamFactory(
             generationId = stream.generationId,
             minimumGenerationId = stream.minimumGenerationId,
             syncId = stream.syncId,
-            schema = jsonSchemaToAirbyteType.convert(stream.stream.jsonSchema),
-            isFileBased = stream.stream.isFileBased ?: false,
-            includeFiles = stream.includeFiles ?: false,
+            schema = schema,
+            isFileBased = (stream.stream.isFileBased ?: false) || forceFileTransfer,
+            includeFiles = (stream.includeFiles ?: false) || forceFileTransfer,
             destinationObjectName = stream.destinationObjectName,
             matchingKey =
                 stream.destinationObjectName?.let {
@@ -214,6 +222,16 @@ class DestinationStreamFactory(
                 }
         )
     }
+}
+
+private fun AirbyteType.isFileTransferMetadataSchema(): Boolean {
+    if (this !is ObjectType) {
+        return false
+    }
+
+    val fileMetadataFields =
+        setOf("bytes", "file_name", "folder", "id", "mime_type", "source_uri")
+    return properties.keys.containsAll(fileMetadataFields)
 }
 
 private fun fromCompositeNestedKeyToCompositeKey(

@@ -18,6 +18,8 @@ import io.airbyte.protocol.models.v0.ConfiguredAirbyteCatalog
 import io.airbyte.protocol.models.v0.ConfiguredAirbyteStream
 import io.airbyte.protocol.models.v0.DestinationSyncMode
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 
@@ -140,6 +142,124 @@ class DestinationCatalogTest {
             expectedOrderedSchema.toList(),
             stream.airbyteValueProxyFieldAccessors.toList()
         )
+    }
+
+    @Test
+    fun fileTransferEnabledForcesFileMetadataStreamsToIncludeFiles() {
+        val streamFactory =
+            DestinationStreamFactory(
+                JsonSchemaToAirbyteType(JsonSchemaToAirbyteType.UnionBehavior.DEFAULT),
+                namespaceMapper = NamespaceMapper(),
+                fileTransferEnabled = true,
+            )
+        val catalogFactory = DefaultDestinationCatalogFactory()
+        val configuredCatalog =
+            ConfiguredAirbyteCatalog()
+                .withStreams(
+                    listOf(
+                        ConfiguredAirbyteStream()
+                            .withSyncId(12)
+                            .withMinimumGenerationId(34)
+                            .withGenerationId(56)
+                            .withDestinationSyncMode(DestinationSyncMode.OVERWRITE)
+                            .withIncludeFiles(false)
+                            .withStream(
+                                AirbyteStream()
+                                    .withJsonSchema(
+                                        """
+                                        {
+                                          "type": "object",
+                                          "properties": {
+                                            "bytes": {"type": "integer"},
+                                            "created_at": {"type": "string"},
+                                            "file_name": {"type": "string"},
+                                            "folder": {"type": "string"},
+                                            "id": {"type": "string"},
+                                            "mime_type": {"type": "string"},
+                                            "source_uri": {"type": "string"},
+                                            "updated_at": {"type": "string"}
+                                          }
+                                        }
+                                        """
+                                            .trimIndent()
+                                            .deserializeToNode()
+                                    )
+                                    .withNamespace("namespace")
+                                    .withName("geotag_raw_files")
+                                    .withIsFileBased(false)
+                            )
+                    )
+                )
+
+        val destinationCatalog =
+            catalogFactory.getDestinationCatalog(
+                configuredCatalog,
+                streamFactory,
+                operation = "write",
+                checkNamespace = null,
+                namespaceMapper = NamespaceMapper()
+            )
+
+        assertTrue(destinationCatalog.streams.single().isFileBased)
+        assertTrue(destinationCatalog.streams.single().includeFiles)
+        assertTrue(destinationCatalog.asProtocolObject().streams.single().stream.isFileBased)
+        assertTrue(destinationCatalog.asProtocolObject().streams.single().includeFiles)
+    }
+
+    @Test
+    fun fileTransferEnabledDoesNotForceNormalRecordStreamsToIncludeFiles() {
+        val streamFactory =
+            DestinationStreamFactory(
+                JsonSchemaToAirbyteType(JsonSchemaToAirbyteType.UnionBehavior.DEFAULT),
+                namespaceMapper = NamespaceMapper(),
+                fileTransferEnabled = true,
+            )
+        val catalogFactory = DefaultDestinationCatalogFactory()
+        val configuredCatalog =
+            ConfiguredAirbyteCatalog()
+                .withStreams(
+                    listOf(
+                        ConfiguredAirbyteStream()
+                            .withSyncId(12)
+                            .withMinimumGenerationId(34)
+                            .withGenerationId(56)
+                            .withDestinationSyncMode(DestinationSyncMode.OVERWRITE)
+                            .withIncludeFiles(false)
+                            .withStream(
+                                AirbyteStream()
+                                    .withJsonSchema(
+                                        """
+                                        {
+                                          "type": "object",
+                                          "properties": {
+                                            "id": {"type": "string"},
+                                            "name": {"type": "string"}
+                                          }
+                                        }
+                                        """
+                                            .trimIndent()
+                                            .deserializeToNode()
+                                    )
+                                    .withNamespace("namespace")
+                                    .withName("normal_records")
+                                    .withIsFileBased(false)
+                            )
+                    )
+                )
+
+        val destinationCatalog =
+            catalogFactory.getDestinationCatalog(
+                configuredCatalog,
+                streamFactory,
+                operation = "write",
+                checkNamespace = null,
+                namespaceMapper = NamespaceMapper()
+            )
+
+        assertFalse(destinationCatalog.streams.single().isFileBased)
+        assertFalse(destinationCatalog.streams.single().includeFiles)
+        assertFalse(destinationCatalog.asProtocolObject().streams.single().stream.isFileBased)
+        assertFalse(destinationCatalog.asProtocolObject().streams.single().includeFiles)
     }
 
     @Test

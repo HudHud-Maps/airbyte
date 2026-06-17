@@ -39,7 +39,6 @@ import io.airbyte.protocol.protobuf.AirbyteRecordMessage.AirbyteRecordMessagePro
 import io.airbyte.protocol.protobuf.AirbyteRecordMessage.AirbyteValueProtobuf
 import io.mockk.mockk
 import kotlin.test.assertNull
-import kotlin.test.assertTrue
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -491,6 +490,42 @@ internal class DestinationMessageTest {
         assertEquals(stagingFileUrl, internal.stagingFileUrl)
         assertEquals(sourceFileRelativePath, internal.sourceFileRelativePath)
         assertEquals(fileSizeBytes, internal.fileSizeBytes)
+    }
+
+    @ParameterizedTest
+    @CsvSource(
+        "/staging/files/test/1.pdf, /assets/test/1.pdf, 30",
+        "/staging/files/test/index.html, /html/test/1.html, 12580",
+        "/staging/files/cat.jpg, /cats/photos/1/lion.jpg, 999"
+    )
+    fun `message factory creates destination file from protocol file reference`(
+        stagingFileUrl: String,
+        sourceFileRelativePath: String,
+        fileSizeBytes: Long,
+    ) {
+        val fileReference =
+            AirbyteRecordMessageFileReference()
+                .withStagingFileUrl(stagingFileUrl)
+                .withSourceFileRelativePath(sourceFileRelativePath)
+                .withFileSizeBytes(fileSizeBytes)
+        val inputMessage =
+            AirbyteMessage()
+                .withType(AirbyteMessage.Type.RECORD)
+                .withRecord(
+                    AirbyteRecordMessage()
+                        .withStream("name")
+                        .withNamespace("namespace")
+                        .withEmittedAt(1234)
+                        .withFileReference(fileReference)
+                )
+
+        val parsedMessage = convert(factory(isFileTransferEnabled = true), inputMessage)
+        val destinationFile = parsedMessage as DestinationFile
+
+        assertEquals(stagingFileUrl, destinationFile.fileMessage.fileUrl)
+        assertEquals(sourceFileRelativePath, destinationFile.fileMessage.fileRelativePath)
+        assertEquals(fileSizeBytes, destinationFile.fileMessage.bytes)
+        assertEquals(1234, destinationFile.emittedAtMs)
     }
 
     @ParameterizedTest

@@ -60,22 +60,13 @@ class DestinationMessageFactory(
                 val stream = catalog.getStream(descriptor)
                 if (fileTransferEnabled) {
                     try {
-                        @Suppress("UNCHECKED_CAST")
-                        val fileMessage =
-                            message.record.additionalProperties["file"] as Map<String, Any>
-
                         DestinationFile(
                             stream = stream,
                             emittedAtMs = message.record.emittedAt,
                             fileMessage =
-                                DestinationFile.AirbyteRecordMessageFile(
-                                    fileUrl = fileMessage["file_url"] as String?,
-                                    bytes = toLong(fileMessage["bytes"], "message.record.bytes"),
-                                    fileRelativePath = fileMessage["file_relative_path"] as String?,
-                                    modified =
-                                        toLong(fileMessage["modified"], "message.record.modified"),
-                                    sourceFileUrl = fileMessage["source_file_url"] as String?,
-                                ),
+                                message.record.toDestinationFileMessage { value, name ->
+                                    toLong(value, name)
+                                },
                         )
                     } catch (e: Exception) {
                         throw IllegalArgumentException(
@@ -221,6 +212,31 @@ class DestinationMessageFactory(
             }
             else -> Undefined
         }
+    }
+
+    private fun AirbyteRecordMessage.toDestinationFileMessage(
+        toLong: (Any?, String) -> Long?
+    ): DestinationFile.AirbyteRecordMessageFile {
+        fileReference?.let {
+            return DestinationFile.AirbyteRecordMessageFile(
+                fileUrl = it.stagingFileUrl,
+                bytes = it.fileSizeBytes,
+                fileRelativePath = it.sourceFileRelativePath,
+            )
+        }
+
+        @Suppress("UNCHECKED_CAST")
+        val fileMessage =
+            additionalProperties["file"] as? Map<String, Any>
+                ?: throw IllegalArgumentException("record is missing file reference")
+
+        return DestinationFile.AirbyteRecordMessageFile(
+            fileUrl = fileMessage["file_url"] as String?,
+            bytes = toLong(fileMessage["bytes"], "message.record.bytes"),
+            fileRelativePath = fileMessage["file_relative_path"] as String?,
+            modified = toLong(fileMessage["modified"], "message.record.modified"),
+            sourceFileUrl = fileMessage["source_file_url"] as String?,
+        )
     }
 
     private fun keyFromAdditionalPropertiesMaybe(

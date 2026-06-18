@@ -10,6 +10,7 @@ import io.airbyte.cdk.load.task.DestinationTaskLauncher
 import io.airbyte.cdk.load.task.SelfTerminating
 import io.airbyte.cdk.load.task.Task
 import io.airbyte.cdk.load.task.TerminalCondition
+import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.inject.Singleton
 
 class CloseStreamTask(
@@ -17,14 +18,27 @@ class CloseStreamTask(
     val streamDescriptor: DestinationStream.Descriptor,
     private val taskLauncher: DestinationTaskLauncher
 ) : Task {
+    private val log = KotlinLogging.logger {}
+
     override val terminalCondition: TerminalCondition = SelfTerminating
 
     override suspend fun execute() {
-        val streamLoader = syncManager.getOrAwaitStreamLoader(streamDescriptor)
-        streamLoader.close(
-            hadNonzeroRecords = syncManager.getStreamManager(streamDescriptor).hadNonzeroRecords(),
-        )
-        syncManager.getStreamManager(streamDescriptor).markProcessingSucceeded()
+        val streamManager = syncManager.getStreamManager(streamDescriptor)
+        val hadNonzeroRecords = streamManager.hadNonzeroRecords()
+        val streamLoader =
+            if (hadNonzeroRecords) {
+                syncManager.getOrAwaitStreamLoader(streamDescriptor)
+            } else {
+                syncManager.getStreamLoaderOrNull(streamDescriptor)
+            }
+
+        if (streamLoader == null) {
+            log.info { "No stream loader opened for zero-record stream $streamDescriptor" }
+        } else {
+            streamLoader.close(hadNonzeroRecords = hadNonzeroRecords)
+        }
+
+        streamManager.markProcessingSucceeded()
         taskLauncher.handleStreamClosed()
     }
 }

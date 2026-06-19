@@ -12,8 +12,10 @@ import pytest
 from source_google_drive.spec import ServiceAccountCredentials, SourceGoogleDriveSpec
 from source_google_drive.stream_reader import GoogleDriveRemoteFile, SourceGoogleDriveStreamReader
 
+from airbyte_cdk import AirbyteTracedException
 from airbyte_cdk.sources.file_based.config.file_based_stream_config import FileBasedStreamConfig
 from airbyte_cdk.sources.file_based.config.jsonl_format import JsonlFormat
+from airbyte_cdk.sources.file_based.exceptions import FileSizeLimitError
 from airbyte_cdk.sources.file_based.file_based_stream_reader import FileReadMode
 
 
@@ -35,6 +37,26 @@ def create_reader(
 
 def flatten_list(list_of_lists):
     return [item for sublist in list_of_lists for item in sublist]
+
+
+def test_file_size_limit_defaults_to_geotag_video_size(monkeypatch):
+    monkeypatch.delenv(SourceGoogleDriveStreamReader.FILE_SIZE_LIMIT_ENV_VAR, raising=False)
+
+    assert SourceGoogleDriveStreamReader.file_size_limit() == 10 * 1024 * 1024 * 1024
+
+
+def test_file_size_limit_can_be_overridden(monkeypatch):
+    monkeypatch.setenv(SourceGoogleDriveStreamReader.FILE_SIZE_LIMIT_ENV_VAR, "4294967296")
+
+    assert SourceGoogleDriveStreamReader.file_size_limit() == 4 * 1024 * 1024 * 1024
+
+
+@pytest.mark.parametrize("configured_limit", ["not-a-number", "0", "-1"])
+def test_file_size_limit_rejects_invalid_override(monkeypatch, configured_limit):
+    monkeypatch.setenv(SourceGoogleDriveStreamReader.FILE_SIZE_LIMIT_ENV_VAR, configured_limit)
+
+    with pytest.raises(AirbyteTracedException):
+        SourceGoogleDriveStreamReader.file_size_limit()
 
 
 @pytest.mark.parametrize(
@@ -1063,6 +1085,31 @@ def test_upload_file(
         else:
             files_service.get_media.assert_has_calls([call(fileId=file.id)])
             assert file.mime_type == file_record_data.mime_type
+
+
+def test_upload_file_rejects_files_above_configured_limit(monkeypatch):
+    monkeypatch.setenv(SourceGoogleDriveStreamReader.FILE_SIZE_LIMIT_ENV_VAR, "1024")
+    file = GoogleDriveRemoteFile(
+        uri="date=2026-06-16/video_id=1/video.mp4",
+        last_modified=datetime.datetime(2026, 6, 16, 6, 16, 6),
+        created_at=datetime.datetime(2026, 6, 16, 6, 16, 6),
+        mime_type="video/mp4",
+        id="large-video",
+        original_mime_type="video/mp4",
+        view_link="https://docs.google.com/file/d/large-video/view?usp=drivesdk",
+    )
+    files_service = MagicMock()
+    mock_get = MagicMock()
+    mock_get.execute.return_value = {"size": 1025}
+    files_service.get.return_value = mock_get
+    drive_service = MagicMock()
+    drive_service.files.return_value = files_service
+
+    reader = create_reader()
+    reader._drive_service = drive_service
+
+    with pytest.raises(FileSizeLimitError):
+        reader.upload(file, local_directory=TEST_LOCAL_DIRECTORY, logger=MagicMock())
 
 
 @pytest.mark.parametrize(

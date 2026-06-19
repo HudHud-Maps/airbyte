@@ -76,7 +76,8 @@ class GoogleDriveRemoteFile(RemoteFile):
 
 
 class SourceGoogleDriveStreamReader(AbstractFileBasedStreamReader):
-    FILE_SIZE_LIMIT = 1_500_000_000
+    DEFAULT_FILE_SIZE_LIMIT_BYTES = 10 * 1024 * 1024 * 1024
+    FILE_SIZE_LIMIT_ENV_VAR = "GOOGLE_DRIVE_FILE_SIZE_LIMIT_BYTES"
 
     def __init__(self):
         super().__init__()
@@ -128,6 +129,32 @@ class SourceGoogleDriveStreamReader(AbstractFileBasedStreamReader):
         if self._drive_service is None:
             self._drive_service = self._build_google_service("drive", "v3")
         return self._drive_service
+
+    @classmethod
+    def file_size_limit(cls) -> int:
+        configured_limit = os.getenv(cls.FILE_SIZE_LIMIT_ENV_VAR)
+        if configured_limit is None:
+            return cls.DEFAULT_FILE_SIZE_LIMIT_BYTES
+
+        try:
+            file_size_limit = int(configured_limit)
+        except ValueError as e:
+            raise AirbyteTracedException(
+                internal_message=f"{cls.FILE_SIZE_LIMIT_ENV_VAR} must be an integer number of bytes.",
+                message=f"{cls.FILE_SIZE_LIMIT_ENV_VAR} must be an integer number of bytes.",
+                failure_type=FailureType.config_error,
+                exception=e,
+            )
+
+        if file_size_limit <= 0:
+            message = f"{cls.FILE_SIZE_LIMIT_ENV_VAR} must be greater than 0."
+            raise AirbyteTracedException(
+                internal_message=message,
+                message=message,
+                failure_type=FailureType.config_error,
+            )
+
+        return file_size_limit
 
     def get_matching_files(self, globs: List[str], prefix: Optional[str], logger: logging.Logger) -> Iterable[RemoteFile]:
         """
@@ -276,8 +303,9 @@ class SourceGoogleDriveStreamReader(AbstractFileBasedStreamReader):
         """
         file_size = self.file_size(file)
         # I'm putting this check here so we can remove the safety wheels per connector when ready.
-        if file_size > self.FILE_SIZE_LIMIT:
-            message = "File size exceeds the 1 GB limit."
+        file_size_limit = self.file_size_limit()
+        if file_size > file_size_limit:
+            message = f"File size {file_size} bytes exceeds the Google Drive source limit of {file_size_limit} bytes."
             raise FileSizeLimitError(message=message, internal_message=message, failure_type=FailureType.config_error)
 
         try:

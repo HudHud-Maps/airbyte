@@ -48,6 +48,7 @@ import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 import kotlinx.coroutines.runBlocking
 import org.apache.iceberg.ManageSnapshots
+import org.apache.iceberg.PartitionSpec
 import org.apache.iceberg.Schema
 import org.apache.iceberg.SortOrder
 import org.apache.iceberg.Table
@@ -137,6 +138,7 @@ internal class S3DataLakeStreamLoaderTest {
         every { manageSnapshots.commit() } just runs
         val table: Table = mockk {
             every { schema() } returns icebergSchema
+            every { spec() } returns PartitionSpec.unpartitioned()
             every { manageSnapshots() } returns manageSnapshots
         }
         val s3DataLakeUtil: S3DataLakeUtil = mockk {
@@ -203,6 +205,7 @@ internal class S3DataLakeStreamLoaderTest {
         every { manageSnapshots.commit() } just runs
         val table: Table = mockk {
             every { schema() } returns icebergSchema
+            every { spec() } returns PartitionSpec.unpartitioned()
             every { refresh() } just runs
             every { manageSnapshots() } returns manageSnapshots
         }
@@ -277,6 +280,7 @@ internal class S3DataLakeStreamLoaderTest {
             }
         val table: Table = mockk {
             every { schema() } returns icebergSchema
+            every { spec() } returns PartitionSpec.unpartitioned()
             every { refresh() } just runs
             every { manageSnapshots() } returns manageSnapshots
         }
@@ -339,6 +343,7 @@ internal class S3DataLakeStreamLoaderTest {
         every { manageSnapshots.commit() } just runs
         val table: Table = mockk {
             every { schema() } returns icebergSchema
+            every { spec() } returns PartitionSpec.unpartitioned()
             every { refresh() } just runs
             every { manageSnapshots() } returns manageSnapshots
         }
@@ -545,11 +550,16 @@ internal class S3DataLakeStreamLoaderTest {
             every { awsAccessKeyConfiguration } returns awsConfiguration
             every { icebergCatalogConfiguration } returns icebergCatalogConfig
             every { s3BucketConfiguration } returns bucketConfiguration
+            every { partitionMode } returns false
+            every { partitionKeys } returns emptyList()
+            every { autoDatePartition } returns false
+            every { datePartitionColumn } returns null
         }
         val catalog: Catalog = mockk()
         val table: Table = mockk {
             every { schema() } returns icebergSchema
             every { sortOrder() } returns SortOrder.unsorted()
+            every { spec() } returns PartitionSpec.unpartitioned()
         }
         val updateSchema: UpdateSchema = mockk()
         every { table.updateSchema().allowIncompatibleChanges() } returns updateSchema
@@ -714,11 +724,16 @@ internal class S3DataLakeStreamLoaderTest {
             every { awsAccessKeyConfiguration } returns awsConfiguration
             every { icebergCatalogConfiguration } returns icebergCatalogConfig
             every { s3BucketConfiguration } returns bucketConfiguration
+            every { partitionMode } returns false
+            every { partitionKeys } returns emptyList()
+            every { autoDatePartition } returns false
+            every { datePartitionColumn } returns null
         }
         val catalog: Catalog = mockk()
         val table: Table = mockk {
             every { schema() } returns icebergSchema
             every { sortOrder() } returns SortOrder.unsorted()
+            every { spec() } returns PartitionSpec.unpartitioned()
         }
         val updateSchema: UpdateSchema = mockk()
         every { table.updateSchema().allowIncompatibleChanges() } returns updateSchema
@@ -858,6 +873,10 @@ internal class S3DataLakeStreamLoaderTest {
             every { awsAccessKeyConfiguration } returns awsConfiguration
             every { icebergCatalogConfiguration } returns icebergCatalogConfig
             every { s3BucketConfiguration } returns bucketConfiguration
+            every { partitionMode } returns false
+            every { partitionKeys } returns emptyList()
+            every { autoDatePartition } returns false
+            every { datePartitionColumn } returns null
         }
     }
 

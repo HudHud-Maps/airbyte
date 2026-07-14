@@ -7,6 +7,7 @@ package io.airbyte.integrations.destination.s3_data_lake.check
 import io.airbyte.cdk.load.check.DestinationChecker
 import io.airbyte.cdk.load.command.DestinationStream
 import io.airbyte.cdk.load.command.iceberg.parquet.GlueCatalogConfiguration
+import io.airbyte.cdk.load.command.iceberg.parquet.HiveCatalogConfiguration
 import io.airbyte.cdk.load.command.iceberg.parquet.NessieCatalogConfiguration
 import io.airbyte.cdk.load.command.iceberg.parquet.PolarisCatalogConfiguration
 import io.airbyte.cdk.load.command.iceberg.parquet.RestCatalogConfiguration
@@ -66,6 +67,7 @@ class S3DataLakeChecker(
                     is NessieCatalogConfiguration -> it.namespace
                     is RestCatalogConfiguration, -> it.namespace
                     is PolarisCatalogConfiguration -> it.namespace
+                    is HiveCatalogConfiguration -> it.databaseName
                 }
             }
 

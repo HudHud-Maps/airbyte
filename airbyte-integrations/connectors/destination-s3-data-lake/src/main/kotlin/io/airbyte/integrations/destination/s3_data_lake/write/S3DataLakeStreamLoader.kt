@@ -13,6 +13,8 @@ import io.airbyte.cdk.load.toolkits.iceberg.parquet.io.IcebergUtil
 import io.airbyte.cdk.load.write.StreamLoader
 import io.airbyte.cdk.load.write.StreamStateStore
 import io.airbyte.integrations.destination.s3_data_lake.catalog.S3DataLakeUtil
+import io.airbyte.integrations.destination.s3_data_lake.catalog.applyPartitionSpec
+import io.airbyte.integrations.destination.s3_data_lake.catalog.buildPartitionSpec
 import io.airbyte.integrations.destination.s3_data_lake.spec.DEFAULT_CATALOG_NAME
 import io.airbyte.integrations.destination.s3_data_lake.spec.S3DataLakeConfiguration
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -72,6 +74,18 @@ class S3DataLakeStreamLoader(
         // incrementally, and if the entire sync is in a transaction, we might crash before we can
         // commit that transaction.
         targetSchema = computeOrExecuteSchemaUpdate().schema
+
+        // Apply partitioning (metadata-only spec evolution) before creating the staging branch.
+        // Existing data files keep their layout; new files are written into the new partitions.
+        // applyPartitionSpec refreshes the table when the spec changes.
+        val desiredSpec =
+            buildPartitionSpec(
+                schema = table.schema(),
+                importType = stream.tableSchema.importType,
+                config = icebergConfiguration,
+            )
+        applyPartitionSpec(table, desiredSpec)
+
         logger.info {
             "Creating staging branch $stagingBranchName for stream ${stream.mappedDescriptor}"
         }

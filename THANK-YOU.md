@@ -2,6 +2,8 @@
 
 Airbyte would not be possible without the support and assistance of other open-source tools and companies who believe in giving back to the OSS community. On this page, we want to recognize the most important open-source or otherwise free parts of our stack.
 
+
+
 ## Technologies
 
 **Docker**

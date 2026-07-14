@@ -126,6 +126,17 @@ class S3DataLakeSpecification :
     @get:JsonProperty("date_partition_column", required = false)
     @get:JsonSchemaInject(json = """{"order": 12}""")
     val datePartitionColumn: String? = null
+
+    @get:JsonSchemaTitle("Namespace delimiter")
+    @get:JsonPropertyDescription(
+        "Optional. If set, the destination namespace is split on this delimiter into a multi-level " +
+            "Iceberg namespace (for example, delimiter \".\" turns \"poi.bronze\" into namespace " +
+            "[poi, bronze]). Leave empty to keep the namespace as a single level. Only supported for " +
+            "REST, Nessie, and Polaris catalogs; must be empty for AWS Glue and Hive."
+    )
+    @get:JsonProperty("namespace_delimiter", required = false)
+    @get:JsonSchemaInject(json = """{"examples":["."], "order": 13}""")
+    val namespaceDelimiter: String? = null
 }
 
 @Singleton

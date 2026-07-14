@@ -46,19 +46,22 @@ class TableIdGeneratorFactory(private val s3DataLakeConfiguration: S3DataLakeCon
                 SimpleTableIdGenerator(
                     (s3DataLakeConfiguration.icebergCatalogConfiguration.catalogConfiguration
                             as NessieCatalogConfiguration)
-                        .namespace
+                        .namespace,
+                    s3DataLakeConfiguration.namespaceDelimiter,
                 )
             is RestCatalogConfiguration ->
                 SimpleTableIdGenerator(
                     (s3DataLakeConfiguration.icebergCatalogConfiguration.catalogConfiguration
                             as RestCatalogConfiguration)
-                        .namespace
+                        .namespace,
+                    s3DataLakeConfiguration.namespaceDelimiter,
                 )
             is PolarisCatalogConfiguration ->
                 SimpleTableIdGenerator(
                     (s3DataLakeConfiguration.icebergCatalogConfiguration.catalogConfiguration
                             as PolarisCatalogConfiguration)
-                        .namespace
+                        .namespace,
+                    s3DataLakeConfiguration.namespaceDelimiter,
                 )
             is HiveCatalogConfiguration ->
                 GlueTableIdGenerator(

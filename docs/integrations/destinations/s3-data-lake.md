@@ -388,6 +388,21 @@ Now, you can identify the latest version of the 'Alice' record by querying wheth
 
 This destination supports [namespaces](https://docs.airbyte.com/platform/using-airbyte/core-concepts/namespaces).
 
+### Nested (multi-level) namespaces
+
+By default the destination namespace is treated as a single Iceberg namespace level, even if it
+contains dots. Catalogs that support true multi-level namespaces (REST, Nessie, and Polaris) can
+opt in to nesting by setting the **Namespace delimiter** field.
+
+When a delimiter is set (for example, `.`), the resolved namespace is split on that delimiter into a
+multi-level Iceberg namespace, and every ancestor level is created automatically (parent-first). For
+example, with delimiter `.` a namespace of `poi.bronze` becomes the Iceberg namespace
+`[poi, bronze]`, and the `poi` namespace is created first if it does not already exist.
+
+This feature is opt-in and backward compatible: leaving **Namespace delimiter** empty preserves the
+previous single-level behavior. It is not supported for AWS Glue or Hive catalogs (whose databases
+are flat), and configuring it for those catalog types is rejected during validation.
+
 ## Changelog
 
 <details>
@@ -395,6 +410,7 @@ This destination supports [namespaces](https://docs.airbyte.com/platform/using-a
 
 | Version     | Date       | Pull Request                                               | Subject                                                                                                                                                         |
 |:------------|:-----------|:-----------------------------------------------------------|:----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 0.3.53      | 2026-07-15 |                                                            | Add opt-in nested (multi-level) Iceberg namespace support via `namespace_delimiter` for REST, Nessie, and Polaris catalogs; ancestors are auto-created parent-first. Default behavior is unchanged and the feature is rejected for Glue/Hive. |
 | 0.3.52      | 2026-07-15 |                                                            | Add table partitioning: manual identity partitioning (`partition_mode` + `partition_keys`) and guarded auto date partitioning (`auto_date_partition` + `date_partition_column`) for Append/Overwrite streams. |
 | 0.3.51      | 2026-06-10 | [79123](https://github.com/airbytehq/airbyte/pull/79123)   | Update Apacher Iceberg dependencies.                                                                                                                            |
 | 0.3.50      | 2026-06-03 |                                                            | Use unique staging branches and clean them up after each sync.                                                                                                  |

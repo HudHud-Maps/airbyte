@@ -4,11 +4,14 @@
 
 package io.airbyte.integrations.destination.s3_data_lake.spec
 
+import io.airbyte.cdk.ConfigErrorException
 import io.airbyte.cdk.load.command.DestinationConfiguration
 import io.airbyte.cdk.load.command.DestinationConfigurationFactory
 import io.airbyte.cdk.load.command.DestinationStream
 import io.airbyte.cdk.load.command.aws.AWSAccessKeyConfiguration
 import io.airbyte.cdk.load.command.aws.AWSAccessKeyConfigurationProvider
+import io.airbyte.cdk.load.command.iceberg.parquet.GlueCatalogConfiguration
+import io.airbyte.cdk.load.command.iceberg.parquet.HiveCatalogConfiguration
 import io.airbyte.cdk.load.command.iceberg.parquet.IcebergCatalogConfiguration
 import io.airbyte.cdk.load.command.iceberg.parquet.IcebergCatalogConfigurationProvider
 import io.micronaut.context.annotation.Factory
@@ -45,6 +48,7 @@ data class S3DataLakeConfiguration(
     val partitionKeys: List<String> = emptyList(),
     val autoDatePartition: Boolean = true,
     val datePartitionColumn: String? = null,
+    val namespaceDelimiter: String? = null,
 ) :
     DestinationConfiguration(),
     AWSAccessKeyConfigurationProvider,
@@ -77,15 +81,30 @@ class S3DataLakeConfigurationFactory :
     override fun makeWithoutExceptionHandling(
         pojo: S3DataLakeSpecification
     ): S3DataLakeConfiguration {
+        val icebergCatalogConfiguration = pojo.toIcebergCatalogConfiguration()
+        val namespaceDelimiter = pojo.namespaceDelimiter?.takeIf { it.isNotBlank() }
+        if (namespaceDelimiter != null) {
+            val catalogConfiguration = icebergCatalogConfiguration.catalogConfiguration
+            if (
+                catalogConfiguration is GlueCatalogConfiguration ||
+                    catalogConfiguration is HiveCatalogConfiguration
+            ) {
+                throw ConfigErrorException(
+                    "Nested namespaces (namespace_delimiter) are not supported for AWS Glue/Hive catalogs. " +
+                        "Please leave the Namespace delimiter empty for this catalog type."
+                )
+            }
+        }
         return S3DataLakeConfiguration(
             awsAccessKeyConfiguration = pojo.toAWSAccessKeyConfiguration(),
             s3BucketConfiguration = pojo.toS3BucketConfiguration(),
-            icebergCatalogConfiguration = pojo.toIcebergCatalogConfiguration(),
+            icebergCatalogConfiguration = icebergCatalogConfiguration,
             flushBatchSizeMb = pojo.flushBatchSizeMb,
             partitionMode = pojo.partitionMode ?: false,
             partitionKeys = pojo.partitionKeys ?: emptyList(),
             autoDatePartition = pojo.autoDatePartition ?: true,
             datePartitionColumn = pojo.datePartitionColumn?.takeIf { it.isNotBlank() },
+            namespaceDelimiter = namespaceDelimiter,
         )
     }
 }

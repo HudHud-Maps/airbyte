@@ -281,6 +281,13 @@
         "description" : "The date/timestamp column used to derive year/month/day partitions when Auto date partition is enabled. Must be a date or timestamp column; if it is missing or not a temporal type, date partitioning is skipped. Ignored for Append + Dedup streams.",
         "title" : "Date partition column",
         "order" : 12
+      },
+      "namespace_delimiter" : {
+        "type" : "string",
+        "description" : "Optional. If set, the destination namespace is split on this delimiter into a multi-level Iceberg namespace (for example, delimiter \".\" turns \"poi.bronze\" into namespace [poi, bronze]). Leave empty to keep the namespace as a single level. Only supported for REST, Nessie, and Polaris catalogs; must be empty for AWS Glue and Hive.",
+        "title" : "Namespace delimiter",
+        "examples" : [ "." ],
+        "order" : 13
       }
     },
     "required" : [ "s3_bucket_name", "s3_bucket_region", "warehouse_location", "main_branch_name", "catalog_type" ]

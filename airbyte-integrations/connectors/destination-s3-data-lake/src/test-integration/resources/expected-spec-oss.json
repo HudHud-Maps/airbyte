@@ -209,6 +209,34 @@
             }
           },
           "required" : [ "catalog_type", "server_uri", "catalog_name", "client_id", "client_secret", "scope", "namespace" ]
+        }, {
+          "title" : "Hive Catalog",
+          "type" : "object",
+          "additionalProperties" : true,
+          "description" : "Configuration details for connecting to a Hive Metastore-based Iceberg catalog.",
+          "properties" : {
+            "catalog_type" : {
+              "type" : "string",
+              "enum" : [ "HIVE" ],
+              "default" : "HIVE"
+            },
+            "hive_thrift_uri" : {
+              "type" : "string",
+              "description" : "The Hive Metastore thrift URI used to connect to the Hive catalog. Must start with \"thrift://\".",
+              "title" : "Hive Metastore thrift URI",
+              "examples" : [ "thrift://host:9083" ],
+              "order" : 1
+            },
+            "database_name" : {
+              "type" : "string",
+              "default" : "default",
+              "description" : "The Hive database name. This will ONLY be used if the `Destination Namespace` setting for the connection is set to `Destination-defined` or `Source-defined`",
+              "title" : "Default database",
+              "examples" : [ "default" ],
+              "order" : 2
+            }
+          },
+          "required" : [ "catalog_type", "hive_thrift_uri", "database_name" ]
         } ],
         "description" : "Specifies the type of Iceberg catalog (e.g., NESSIE, GLUE, REST, POLARIS) and its associated configuration.",
         "title" : "Catalog Type",
@@ -224,6 +252,35 @@
         "default" : 200,
         "order" : 8,
         "airbyte_hidden" : true
+      },
+      "partition_mode" : {
+        "type" : "boolean",
+        "description" : "Enable partition mode to partition tables by the configured partition keys. When enabled, tables are partitioned by identity on each column listed in Partition keys.",
+        "title" : "Enable partition mode",
+        "default" : false,
+        "order" : 9
+      },
+      "partition_keys" : {
+        "type" : "array",
+        "items" : {
+          "type" : "string"
+        },
+        "description" : "List of column names to use as identity partition keys. Only used when partition mode is enabled. Columns absent from a given stream are skipped. For Append + Dedup streams, only list columns whose value is stable for a given primary key, otherwise updates can leave stale rows in old partitions.",
+        "title" : "Partition keys",
+        "order" : 10
+      },
+      "auto_date_partition" : {
+        "type" : "boolean",
+        "description" : "When enabled (default), automatically partitions Append/Overwrite streams by year/month/day derived from the configured Date partition column. Only applies when Date partition column is set and resolves to a date/timestamp type; it never applies to Append + Dedup streams.",
+        "title" : "Auto date partition",
+        "default" : true,
+        "order" : 11
+      },
+      "date_partition_column" : {
+        "type" : "string",
+        "description" : "The date/timestamp column used to derive year/month/day partitions when Auto date partition is enabled. Must be a date or timestamp column; if it is missing or not a temporal type, date partitioning is skipped. Ignored for Append + Dedup streams.",
+        "title" : "Date partition column",
+        "order" : 12
       }
     },
     "required" : [ "s3_bucket_name", "s3_bucket_region", "warehouse_location", "main_branch_name", "catalog_type" ]

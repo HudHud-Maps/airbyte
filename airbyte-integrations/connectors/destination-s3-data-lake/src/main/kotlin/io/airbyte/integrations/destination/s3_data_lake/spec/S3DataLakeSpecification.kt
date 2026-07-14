@@ -85,6 +85,47 @@ class S3DataLakeSpecification :
         json = """{"examples":[200], "default": 200, "order": 8, "airbyte_hidden": true}"""
     )
     val flushBatchSizeMb: Long? = null
+
+    @get:JsonSchemaTitle("Enable partition mode")
+    @get:JsonPropertyDescription(
+        "Enable partition mode to partition tables by the configured partition keys. " +
+            "When enabled, tables are partitioned by identity on each column listed in Partition keys."
+    )
+    @get:JsonProperty("partition_mode", required = false)
+    @get:JsonSchemaInject(json = """{"default": false, "order": 9}""")
+    val partitionMode: Boolean? = null
+
+    @get:JsonSchemaTitle("Partition keys")
+    @get:JsonPropertyDescription(
+        "List of column names to use as identity partition keys. Only used when partition mode is " +
+            "enabled. Columns absent from a given stream are skipped. For Append + Dedup streams, " +
+            "only list columns whose value is stable for a given primary key, otherwise updates can " +
+            "leave stale rows in old partitions."
+    )
+    @get:JsonProperty("partition_keys", required = false)
+    @get:JsonSchemaInject(json = """{"order": 10}""")
+    val partitionKeys: List<String>? = null
+
+    @get:JsonSchemaTitle("Auto date partition")
+    @get:JsonPropertyDescription(
+        "When enabled (default), automatically partitions Append/Overwrite streams by " +
+            "year/month/day derived from the configured Date partition column. Only applies when " +
+            "Date partition column is set and resolves to a date/timestamp type; it never applies to " +
+            "Append + Dedup streams."
+    )
+    @get:JsonProperty("auto_date_partition", required = false)
+    @get:JsonSchemaInject(json = """{"default": true, "order": 11}""")
+    val autoDatePartition: Boolean? = null
+
+    @get:JsonSchemaTitle("Date partition column")
+    @get:JsonPropertyDescription(
+        "The date/timestamp column used to derive year/month/day partitions when Auto date " +
+            "partition is enabled. Must be a date or timestamp column; if it is missing or not a " +
+            "temporal type, date partitioning is skipped. Ignored for Append + Dedup streams."
+    )
+    @get:JsonProperty("date_partition_column", required = false)
+    @get:JsonSchemaInject(json = """{"order": 12}""")
+    val datePartitionColumn: String? = null
 }
 
 @Singleton
